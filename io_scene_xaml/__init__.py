@@ -2,7 +2,7 @@ bl_info = {
     "name": "Xaml Model Format (.xaml)",
     "author": "Charles HETIER",
     "version": (0, 45),
-    "blender": (2, 6, 3),
+    "blender": (2, 80, 2),
     "api": 36302,
     "location": "File > Export > Xaml (.xaml)",
     "description": "Exports in Xaml Model Format (.xaml)",
@@ -85,7 +85,7 @@ class XamlExporter(bpy.types.Operator):
         materialList = []
         for object in meshList:
             print("tesselating mesh: %s" % object.name)
-            object.data.calc_tessface()            
+            object.data.calc_loop_triangles()            
 
             print("scanning mesh: %s" % object.name)
             for material in object.data.materials:
@@ -98,7 +98,7 @@ class XamlExporter(bpy.types.Operator):
         # Gather Blender lights
         print("\n- Gathering lights")
         lightList = [object for object in context.scene.objects
-                                if object.type in ("LAMP")
+                                if object.type in ("LIGHT")
                                 and object.parent is None]
         print("  -> %i lights found" % len(lightList))
         
@@ -127,15 +127,15 @@ class XamlExporter(bpy.types.Operator):
                     meshListTransparent.append(item)
                 else:
                     print("exporting mesh %s" % item.name)
-                    io_xaml_exporter.writeMeshComprehensive(writer, item, item.to_mesh(bpy.context.scene, self.ApplyModifiers, "PREVIEW"))
+                    io_xaml_exporter.writeMeshComprehensive(writer, item, item.to_mesh())
             for item in meshListTransparent:
                 print("exporting mesh %s" % item.name)
-                io_xaml_exporter.writeMeshComprehensive(writer, item, item.to_mesh(bpy.context.scene, self.ApplyModifiers, "PREVIEW"))
+                io_xaml_exporter.writeMeshComprehensive(writer, item, item.to_mesh())
             meshListTransparent = None
         else:
             for item in meshList:
                 print("exporting mesh %s" % item.name)
-                io_xaml_exporter.writeMeshOptimized(writer, item.to_mesh(bpy.context.scene, self.ApplyModifiers, "PREVIEW"))
+                io_xaml_exporter.writeMeshOptimized(writer, item.to_mesh())
             
         # Write Xaml lights
         for light in lightList:
@@ -162,14 +162,14 @@ def menu_func(self, context):
     self.layout.operator(XamlExporter.bl_idname, text="Export Xaml Scene (.xaml)").filepath = default_path
 
 def register():
-    bpy.utils.register_module(__name__)
-    bpy.types.INFO_MT_file_export.append(menu_func)
+    bpy.utils.register_class(XamlExporter)
+    bpy.types.TOPBAR_MT_file_export.append(menu_func)
     print("registered")
 
 
 def unregister():
-    bpy.utils.unregister_module(__name__)
-    bpy.types.INFO_MT_file_export.remove(menu_func)
+    bpy.utils.unregister_class(XamlExporter)
+    bpy.types.TOPBAR_MT_file_export.remove(menu_func)
     print("unregistered")
     
 if __name__ == "__main__":

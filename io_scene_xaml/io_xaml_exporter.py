@@ -3,6 +3,7 @@ from math import atan
 from math import degrees
 from math import sqrt
 from math import acos
+from bpy.types import TextureNodeTree
 
 # Parameters
 Comprehensive = False
@@ -17,7 +18,7 @@ def formatMaterialName(material):
 
 def meshHasTransparency(mesh):
     return len([1 for material in mesh.data.materials
-                    if material is not None and material.use_transparency]) > 0
+                    if material is not None and material.blend_method == 'BLEND']) > 0
 
 # Begins the Viewport3D Resources tag
 def beginResources(writer):
@@ -36,14 +37,14 @@ def writeMaterial(writer, material):
     # Diffuse material
     writer.openTag("DiffuseMaterial")
     writer.openTag("DiffuseMaterial.Brush")
-    if len(material.texture_slots) > 0 and material.texture_slots[0] is not None and material.texture_slots[0].texture_coords == 'UV' and material.texture_slots[0].texture.image is not None:
+    if material.node_tree is TextureNodeTree and len(material.node_tree) > 0 and material.node_tree[0] is not None and material.node_tree[0].type == 'TEX_IMAGE':
         writer.openTag("ImageBrush")
-        writer.addProperty("ImageSource", material.texture_slots[0].texture.image.filepath)
+        writer.addProperty("ImageSource", material.node_tree[0].image.filepath)
     else:
         writer.openTag("SolidColorBrush")
         writer.addColorProperty("Color", material.diffuse_color)
-    if material.use_transparency and material.alpha < 1:
-        writer.addProperty("Opacity", material.alpha)
+#    if material.blend_method == 'BLEND' and material.alpha < 1:
+#        writer.addProperty("Opacity", material.alpha)
     writer.closeTagName("DiffuseMaterial")
     
     # TODO manage texture
@@ -55,16 +56,16 @@ def writeMaterial(writer, material):
         writer.openTag("SpecularMaterial")
         
         # Check specularity shader for specular power property
-        if material.specular_shader == "BLINN":
-            writer.addProperty("SpecularPower", material.specular_hardness * 100)
-        elif material.specular_shader == "WARDISO":
-            writer.addProperty("SpecularPower", material.specular_slope * 100)
-        elif material.specular_shader == "TOON":
-            writer.addProperty("SpecularPower", material.specular_toon_size * 100)
-        elif material.specular_shader == "PHONG":
-            writer.addProperty("SpecularPower", material.specular_hardness * 100)
-        elif material.specular_shader == "COOKTORR":
-            writer.addProperty("SpecularPower", material.specular_hardness * 100)
+#        if material.specular_shader == "BLINN":
+#            writer.addProperty("SpecularPower", material.specular_hardness * 100)
+#        elif material.specular_shader == "WARDISO":
+#            writer.addProperty("SpecularPower", material.specular_slope * 100)
+#        elif material.specular_shader == "TOON":
+#            writer.addProperty("SpecularPower", material.specular_toon_size * 100)
+#        elif material.specular_shader == "PHONG":
+#            writer.addProperty("SpecularPower", material.specular_hardness * 100)
+#        elif material.specular_shader == "COOKTORR":
+#            writer.addProperty("SpecularPower", material.specular_hardness * 100)
         writer.openTag("SpecularMaterial.Brush")
         writer.openTag("SolidColorBrush")
         writer.addColorProperty("Color", material.specular_color)
@@ -202,8 +203,8 @@ def writeMeshOptimized(writer, mesh):
 def writeMeshComprehensiveMaterialIteration(writer, mesh, meshData, material):
    
     currentVertexIndex = 0
-    hasUvs = len(meshData.uv_textures) > 0
-    if hasUvs:
+    hasUvs = len(meshData.uv_layers) > 0
+    if hasUvs and mesh is not None and material is not None:
         print("UV coordinates detected for mesh [%s] with material [%s]" % (mesh.name, material.name))
 
     vertices = []
@@ -218,19 +219,15 @@ def writeMeshComprehensiveMaterialIteration(writer, mesh, meshData, material):
         materialIndex = [m.name for m in meshData.materials if m is not None].index(material.name)
 
     # for each face from current material, collect data
-    for i, face in enumerate([f for f in meshData.tessfaces if f.material_index == materialIndex]):
+    meshData.calc_loop_triangles()
+    for i, face in enumerate([f for f in meshData.loop_triangles if f.material_index == materialIndex]):
         vertices.extend( [meshData.vertices[vertex].co for vertex in face.vertices] )
         if len(face.vertices) == 3:
             indices.append([currentVertexIndex, currentVertexIndex + 1, currentVertexIndex + 2])
             if hasUvs:
                 #print("Triangle uv face detected")
-                uvs.extend([meshData.tessface_uv_textures.active.data[i].uv3, meshData.tessface_uv_textures.active.data[i].uv2, meshData.tessface_uv_textures.active.data[i].uv1])
-        if len(face.vertices) == 4:
-            indices.append([currentVertexIndex, currentVertexIndex + 1, currentVertexIndex + 3])
-            indices.append([currentVertexIndex + 1, currentVertexIndex + 2, currentVertexIndex + 3])
-            if hasUvs:
-                #print("Quad uv face detected")
-                uvs.extend([meshData.tessface_uv_textures.active.data[i].uv4, meshData.tessface_uv_textures.active.data[i].uv3, meshData.tessface_uv_textures.active.data[i].uv2, meshData.tessface_uv_textures.active.data[i].uv1])
+                #uvs.extend([meshData.uv_layers.active.data[i].uv3, meshData.uv_layers.active.data[i].uv2, meshData.uv_layers.active.data[i].uv1])
+                uvs.extend([meshData.uv_layers.active.data[loop_index].uv for loop_index in face.loops])
         if face.use_smooth:
             normals.extend([meshData.vertices[index].normal for index in face.vertices])
         else:

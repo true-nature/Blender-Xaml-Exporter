@@ -42,7 +42,10 @@ class StreamWriter:
     
     # Formats a color
     def formatColor(self, color):
-        return "#%.2x%.2x%.2x" % (color.r*255, color.g*255, color.b*255)
+        if len(color) == 4:
+            return "#%.2x%.2x%.2x%.2x" % (int(color[3]*255), int(color[0]*255), int(color[1]*255), int(color[2]*255))
+        else:
+            return "#%.2x%.2x%.2x" % (int(color[0]*255), int(color[1]*255), int(color[2]*255))
     
     # Opens a xaml tag
     def openTag(self, name):
@@ -83,7 +86,7 @@ class StreamWriter:
         
     # Adds an euler direction property to the current xaml tag
     def addEulerDirectionProperty(self, key, euler):
-        self.addVectorProperty(key, euler.to_matrix()*Vector((0,0,-1)))
+        self.addVectorProperty(key, euler.to_matrix() @ Vector((0,0,-1)))
     
     # Adds a quaternion property to the current xaml tag
     def addQuaternionProperty(self, key, quaternion):
