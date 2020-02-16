@@ -4,6 +4,7 @@ from math import degrees
 from math import sqrt
 from math import acos
 from bpy.types import TextureNodeTree
+from bpy_extras.node_shader_utils import PrincipledBSDFWrapper
 
 # Parameters
 Comprehensive = False
@@ -34,15 +35,17 @@ def writeMaterial(writer, material):
     writer.openTag("MaterialGroup")
     writer.addProperty("x:Key", formatMaterialName(material))
     
+    principled = PrincipledBSDFWrapper(material, is_readonly=True)
+    specular_texture = principled.specular_texture
     # Diffuse material
     writer.openTag("DiffuseMaterial")
     writer.openTag("DiffuseMaterial.Brush")
-    if material.node_tree is TextureNodeTree and len(material.node_tree) > 0 and material.node_tree[0] is not None and material.node_tree[0].type == 'TEX_IMAGE':
+    if specular_texture and specular_texture.image:
         writer.openTag("ImageBrush")
-        writer.addProperty("ImageSource", material.node_tree[0].image.filepath)
+        writer.addProperty("ImageSource", specular_texture.image.filepath)
     else:
         writer.openTag("SolidColorBrush")
-        writer.addColorProperty("Color", material.diffuse_color)
+        writer.addColorProperty("Color", principled.base_color)
 #    if material.blend_method == 'BLEND' and material.alpha < 1:
 #        writer.addProperty("Opacity", material.alpha)
     writer.closeTagName("DiffuseMaterial")
