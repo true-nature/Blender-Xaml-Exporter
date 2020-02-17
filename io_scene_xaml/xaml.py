@@ -13,7 +13,7 @@ class StreamWriter:
     
     # Writes the file
     def commit(self, filePath):
-        File = open(filePath, "w")
+        File = open(filePath, "w", encoding="utf-8")
         File.write(self.content)
         File.close()
         
